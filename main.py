@@ -10,36 +10,56 @@ def salvar_dados(tabela, dados):
         conexao = sqlite3.connect('academia.db')
         cursor = conexao.cursor()
 
+        # Verificar se o campo id foi fornecido
+        if 'id' not in dados:
+            # Se não foi fornecido, gerar um novo id automaticamente
+            dados['id'] = gera_id(tabela, conexao)
+
         # Verificar se a tabela já existe
         cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tabela}'")
         if cursor.fetchone():
             # Se a tabela já existe, atualizar os dados
-            cursor.execute(f"UPDATE {tabela} SET nome=:nome, email=:email, telefone=:telefone WHERE id=:id", dados)
+            cursor.execute(f"UPDATE {tabela} SET nome=:nome, email=:email, data_nascimento=:data_nascimento, sexo=:sexo, telefone=:telefone, cpf=:cpf, endereco=:endereco WHERE id=:id", dados)
         else:
             # Se a tabela não existe, criar a tabela e inserir os dados
-            cursor.execute(f"CREATE TABLE {tabela} (id INTEGER PRIMARY KEY, nome TEXT, email TEXT, telefone TEXT)")
-            cursor.execute(f"INSERT INTO {tabela} (nome, email, telefone) VALUES (:nome, :email, :telefone)", dados)
+            cursor.execute(f"CREATE TABLE {tabela} (id INTEGER PRIMARY KEY, nome TEXT, email TEXT, data_nascimento DATE, sexo TEXT, telefone TEXT, cpf TEXT, endereco TEXT)")
+            cursor.execute(f"INSERT INTO {tabela} (nome, email, data_nascimento, sexo, telefone, cpf, endereco) VALUES (:nome, :email, :data_nascimento, :sexo, :telefone, :cpf, :endereco)", dados)
 
         # Salvar as alterações e fechar a conexão
         conexao.commit()
         conexao.close()
 
-        # Exibir mensagem de sucesso
-        sg.popup("Dados salvos com sucesso!")
-
     except Exception as ex:
         handle_exception(ex)
 
+def gera_id(tabela, conexao):
+    cursor = conexao.cursor()
+    cursor.execute(f"SELECT MAX(id) FROM {tabela}")
+    id_maximo = cursor.fetchone()[0] or 0
+    return id_maximo + 1
+
+def recriar_tabela(tabela, conexao):
+    cursor = conexao.cursor()
+    cursor.execute(f"DROP TABLE IF EXISTS {tabela}")
+    cursor.execute(f"CREATE TABLE {tabela} (id INTEGER PRIMARY KEY, nome TEXT, email TEXT, data_nascimento DATE, sexo TEXT, telefone TEXT, cpf TEXT, endereco TEXT)")
+    conexao.commit()
+
+# Recriar a tabela de alunos
+conexao = sqlite3.connect('academia.db')
+recriar_tabela('alunos', conexao)
+conexao.close()
+
 def cadastro_aluno():
     layout_aluno = [
-        [sg.Text('Nome:'), sg.Input(key='nome_aluno')],
-        [sg.Text('Data de Nascimento:'), sg.Input(key='data_nascimento_aluno')],
-        [sg.Text('Sexo:'), sg.Combo(['Masculino', 'Feminino'], key='sexo_aluno')],
-        [sg.Text('Telefone:'), sg.Input(key='telefone_aluno')],
-        [sg.Text('CPF:'), sg.Input(key='cpf_aluno')],
-        [sg.Text('Endereço:'), sg.Input(key='endereco_aluno')],
-        [sg.Button('Cadastrar'), sg.Button('Cancelar')]
-    ]
+    [sg.Text('Nome:'), sg.Input(key='nome_aluno')],
+    [sg.Text('Email:'), sg.Input(key='email_aluno')],
+    [sg.Text('Data de Nascimento:'), sg.Input(key='data_nascimento_aluno')],
+    [sg.Text('Sexo:'), sg.Combo(['Masculino', 'Feminino'], key='sexo_aluno')],
+    [sg.Text('Telefone:'), sg.Input(key='telefone_aluno')],
+    [sg.Text('CPF:'), sg.Input(key='cpf_aluno')],
+    [sg.Text('Endereço:'), sg.Input(key='endereco_aluno')],
+    [sg.Button('Cadastrar'), sg.Button('Cancelar')]
+]
 
     window_aluno = sg.Window('Cadastro de Aluno', layout_aluno)
 
@@ -52,6 +72,7 @@ def cadastro_aluno():
         if event == 'Cadastrar':
             try:
                 nome = values['nome_aluno']
+                email = values['email_aluno']
                 data_nascimento = values['data_nascimento_aluno']
                 sexo = values['sexo_aluno']
                 telefone = values['telefone_aluno']
@@ -72,6 +93,7 @@ def cadastro_aluno():
                     # Chamar o método salvar_dados
                     salvar_dados('alunos', {
                         'nome': nome,
+                        'email': email,
                         'data_nascimento': data_nascimento or None,
                         'sexo': sexo,
                         'telefone': telefone,
