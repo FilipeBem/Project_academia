@@ -19,15 +19,18 @@ def salvar_dados(tabela, dados):
         cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tabela}'")
         if cursor.fetchone():
             # Se a tabela já existe, atualizar os dados
+            print(f"Atualizando os dados da tabela {tabela}...")  # <-- Adicionar esta linha
             cursor.execute(f"UPDATE {tabela} SET nome=:nome, email=:email, data_nascimento=:data_nascimento, sexo=:sexo, telefone=:telefone, cpf=:cpf, endereco=:endereco WHERE id=:id", dados)
         else:
             # Se a tabela não existe, criar a tabela e inserir os dados
+            print(f"Criando a tabela {tabela} e inserindo os dados...")  # <-- Adicionar esta linha
             cursor.execute(f"CREATE TABLE {tabela} (id INTEGER PRIMARY KEY, nome TEXT, email TEXT, data_nascimento DATE, sexo TEXT, telefone TEXT, cpf TEXT, endereco TEXT)")
             cursor.execute(f"INSERT INTO {tabela} (nome, email, data_nascimento, sexo, telefone, cpf, endereco) VALUES (:nome, :email, :data_nascimento, :sexo, :telefone, :cpf, :endereco)", dados)
 
         # Salvar as alterações e fechar a conexão
         conexao.commit()
         conexao.close()
+        print(f"Dados salvos com sucesso na tabela {tabela}!")  
 
     except Exception as ex:
         handle_exception(ex)
@@ -40,14 +43,17 @@ def gera_id(tabela, conexao):
 
 def recriar_tabela(tabela, conexao):
     cursor = conexao.cursor()
-    cursor.execute(f"DROP TABLE IF EXISTS {tabela}")
-    cursor.execute(f"CREATE TABLE {tabela} (id INTEGER PRIMARY KEY, nome TEXT, email TEXT, data_nascimento DATE, sexo TEXT, telefone TEXT, cpf TEXT, endereco TEXT)")
-    conexao.commit()
+    cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tabela}'")
+    if not cursor.fetchone():
+        cursor.execute(f"CREATE TABLE {tabela} (id INTEGER PRIMARY KEY, nome TEXT, email TEXT, data_nascimento DATE, sexo TEXT, telefone TEXT, cpf TEXT, endereco TEXT)")
+        conexao.commit()
 
 # Recriar a tabela de alunos
 conexao = sqlite3.connect('academia.db')
 recriar_tabela('alunos', conexao)
 conexao.close()
+
+
 
 def cadastro_aluno():
     layout_aluno = [
@@ -101,6 +107,7 @@ def cadastro_aluno():
                         'endereco': endereco  or None
                     })
                     sg.popup('Aluno cadastrado com sucesso!')
+                    imprimir()
                     break
 
             except Exception as ex:
@@ -220,6 +227,27 @@ def gerar_relatorios():
     def controle_frequencia():
      pass
 
+def imprimir():
+    # Criar conexão com o banco de dados
+    conexao = sqlite3.connect('academia.db')
+    cursor = conexao.cursor()
+
+    # Consultar os dados dos alunos
+    cursor.execute("SELECT * FROM alunos")
+    alunos = cursor.fetchall()
+
+    # Fechar a conexão com o banco de dados
+    conexao.close()
+
+    # Exibir os dados em uma janela de diálogo
+    if alunos:
+        texto = ""
+        for aluno in alunos:
+            texto += f"ID: {aluno[0]}, Nome: {aluno[1]}, Email: {aluno[2]}, Data de Nascimento: {aluno[3]}, Sexo: {aluno[4]}, Telefone: {aluno[5]}, CPF: {aluno[6]}, Endereço: {aluno[7]}\n"
+        messagebox.showinfo("Dados dos Alunos", texto)
+    else:
+        messagebox.showinfo("Dados dos Alunos", "Não há dados de alunos cadastrados.")
+
 # Function for handling logout
 def logoff():
      sg.Window.close_all()
@@ -262,7 +290,7 @@ menu_definition = [
 layout = [
     [sg.Menu(menu_definition, tearoff=False)],
     [sg.Text("Bem-vindo ao Sistema de Controle da Academia!")],
-    [sg.Button('Imprimir')], 
+    [sg.Button("Imprimir", key="Imprimir")], 
     [sg.Multiline(key='resultado', size=(90, 25), disabled=True, background_color='grey', text_color='black')],
 ]
 
@@ -301,7 +329,7 @@ while True:
             elif values['Gerar Relatórios']:
                 pass
         if event == "Imprimir":
-           print("Algum texto de exemplo")
+           imprimir()
 
         elif event == 'User Manual':
                 user_manual_window()
